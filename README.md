@@ -39,25 +39,25 @@ Students can report issues related to **hostels, mess facilities, academics, col
 
 ## 🏠 Landing Page
 
-![CampusVoice Landing Page](./public/images/lading.png)
+![CampusVoice Landing Page](public/home.png)
 
 ---
 
 ## 📊 Dashboard
 
-![CampusVoice Dashboard](./public/images/home.png)
+![CampusVoice Dashboard](public/home2.png)
 
 ---
 
 ## 🏠 Dashboard — Alternative View
 
-![CampusVoice Home](./public/images/home2.png)
+![CampusVoice Home](public/lading.png)
 
 ---
 
 ## 🔐 Student Login
 
-![CampusVoice Login](./public/images/login.png)
+![CampusVoice Login](public/login.png)
 
 ---
 
