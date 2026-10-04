@@ -11,6 +11,7 @@ import ComplaintCard from '../components/ComplaintCard';
 import SearchBar from '../components/SearchBar';
 import Button from '../components/Button';
 import { complaints as defaultComplaints } from '../data/complaints';
+import { useAuth, filterComplaintsByUser } from '../context/AuthContext';
 
 const statuses = ['All', 'Pending', 'Under Review', 'Resolved', 'Rejected', 'Escalated'];
 const sortOptions = [
@@ -32,21 +33,26 @@ function mergedList() {
 }
 
 export default function Complaints() {
+  const auth = useAuth();
+  const user = auth.user;
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [sort, setSort] = useState('newest');
   const [sortOpen, setSortOpen] = useState(false);
-  const [list, setList] = useState(() => mergedList());
+  const [list, setList] = useState(() => filterComplaintsByUser(mergedList(), user));
 
   useEffect(() => {
-    const onStorage = () => setList(mergedList());
+    const onStorage = () => setList(filterComplaintsByUser(mergedList(), user));
     window.addEventListener('storage', onStorage);
-    const interval = setInterval(() => setList(mergedList()), 2000);
+    const interval = setInterval(
+      () => setList(filterComplaintsByUser(mergedList(), user)),
+      2000,
+    );
     return () => {
       window.removeEventListener('storage', onStorage);
       clearInterval(interval);
     };
-  }, []);
+  }, [user]);
 
   const filtered = useMemo(() => {
     let out = [...list];

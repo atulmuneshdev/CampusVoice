@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
@@ -13,6 +14,7 @@ import {
 } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import Button from './Button';
+import { useAuth, filterComplaintsByUser } from '../context/AuthContext';
 
 const items = [
     { to: '/dashboard', label: 'Dashboard', Icon: FiLayout, group: 'Main' },
@@ -30,10 +32,31 @@ const groups = ['Main', 'Updates', 'Account'];
 export default function Sidebar({ open, onClose, mobile }) {
     useLocation();
     const navigate = useNavigate();
+    const auth = useAuth();
+    const user = auth.user;
+    const firstName = (user?.name || '').split(' ')[0] || 'Student';
+
+    const { total, resolved } = useMemo(() => {
+        let all = [];
+        try {
+            const userCreated = JSON.parse(localStorage.getItem('cv_complaints') || '[]');
+            const defs = (window.__CV_COMPLAINTS__ || []).filter(
+                (c) => !userCreated.some((u) => u.id === c.id),
+            );
+            all = [...userCreated, ...defs];
+        } catch {
+            all = window.__CV_COMPLAINTS__ ? [...window.__CV_COMPLAINTS__] : [];
+        }
+        const mine = filterComplaintsByUser(all, user);
+        return {
+            total: mine.length,
+            resolved: mine.filter((c) => c.status === 'Resolved').length,
+        };
+    }, [user]);
 
     const logout = () => {
-        localStorage.removeItem('cv_auth');
-        navigate('/login');
+        auth.logout();
+        navigate('/login?loggedout=1', { replace: true });
         onClose?.();
     };
 
@@ -59,14 +82,18 @@ export default function Sidebar({ open, onClose, mobile }) {
                 <div className="absolute -right-4 -top-4 w-24 h-24 rounded-full bg-white/10" />
                 <div className="relative">
                     <p className="text-xs font-semibold text-white/80 mb-1">Welcome back</p>
-                    <p className="font-bold text-lg leading-tight mb-3">Atul Munesh 👋</p>
-                    <p className="text-[11px] text-white/80 mb-3">CSE20260045 • 1st Sem</p>
+                    <p className="font-bold text-lg leading-tight mb-3">
+                        {user?.name || firstName} 👋
+                    </p>
+                    <p className="text-[11px] text-white/80 mb-3">
+                        {user?.collegeId || '—'} • {user?.semester || '1st Sem'}
+                    </p>
                     <div className="flex items-center justify-between gap-2 text-xs">
                         <div className="px-3 py-1.5 rounded-xl bg-white/20 backdrop-blur font-semibold">
-                            12 Complaints
+                            {total} Complaint{total === 1 ? '' : 's'}
                         </div>
                         <div className="px-3 py-1.5 rounded-xl bg-white/20 backdrop-blur font-semibold">
-                            5 Resolved
+                            {resolved} Resolved
                         </div>
                     </div>
                 </div>

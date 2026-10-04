@@ -15,13 +15,16 @@ import {
     FiChevronRight,
     FiArrowLeft,
     FiHelpCircle,
+    FiUser,
 } from 'react-icons/fi';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
 import { categories } from '../data/categories';
 import { priorityConfig } from '../components/ComplaintStatus';
+import { useAuth } from '../context/AuthContext';
 
 export default function NewComplaint() {
+    const auth = useAuth();
     const [params] = useSearchParams();
     const navigate = useNavigate();
     const [form, setForm] = useState({
@@ -102,6 +105,8 @@ export default function NewComplaint() {
             year: 'numeric',
         });
         const now = new Date();
+        const studentName = auth?.user?.name || 'Student';
+        const studentCollegeId = auth?.user?.collegeId || '';
 
         const newComplaint = {
             id,
@@ -114,12 +119,14 @@ export default function NewComplaint() {
             date: dateStr,
             updatedAt: dateStr,
             description: form.description.trim(),
+            studentName,
+            studentCollegeId,
             files: files.map((f) => ({ name: f.name, size: f.size, type: f.type, isImage: f.isImage })),
             timeline: [
                 {
                     title: 'Complaint Submitted',
                     date: now,
-                    by: 'Atul Munesh',
+                    by: studentName,
                     status: 'done',
                 },
                 {
@@ -526,6 +533,37 @@ export default function NewComplaint() {
                 </div>
 
                 <aside className="space-y-6">
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="rounded-3xl glass shadow-card border border-navy-100 p-6"
+                    >
+                        <h3 className="font-black text-navy-900 mb-4 flex items-center gap-2">
+                            <FiUser className="w-5 h-5 text-navy-500" /> Submitting as
+                        </h3>
+                        <div className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-soft border border-navy-100">
+                            <div className="w-11 h-11 rounded-2xl bg-gradient-brand text-white flex items-center justify-center font-black shadow-glow shrink-0">
+                                {auth?.user?.name
+                                    ? auth.user.name
+                                        .split(' ')
+                                        .map((n) => n[0])
+                                        .filter(Boolean)
+                                        .slice(0, 2)
+                                        .join('')
+                                        .toUpperCase()
+                                    : 'ST'}
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-sm font-bold text-navy-900 truncate">
+                                    {auth?.user?.name || 'Student'}
+                                </p>
+                                <p className="text-xs text-navy-500 truncate">
+                                    {auth?.user?.collegeId || '—'} • {auth?.user?.department || '—'}
+                                </p>
+                            </div>
+                        </div>
+                    </motion.div>
+
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}

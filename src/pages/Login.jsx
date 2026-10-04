@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   FiEye,
   FiEyeOff,
@@ -12,47 +12,82 @@ import {
   FiLock,
   FiUser,
   FiCalendar,
+  FiAlertCircle,
 } from 'react-icons/fi';
 import Button from '../components/Button';
+import { useAuth, validateCollegeId, validatePassword } from '../context/AuthContext';
 
 const academicYears = ['2023-2027', '2024-2028', '2025-2029', '2026-2030'];
 
 export default function Login() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const auth = useAuth();
   const [form, setForm] = useState({
-    collegeId: 'CSE20260045',
+    collegeId: '',
     academicYear: '2026-2030',
-    password: '********',
+    password: '',
     remember: true,
   });
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [touched, setTouched] = useState({});
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    if (params.get('registered') === '1') {
+      setSuccess('Account created! Please sign in with your College ID and password.');
+    }
+    if (params.get('loggedout') === '1') {
+      setError('You have been logged out. Sign in again to continue.');
+    }
+  }, [params]);
 
   const update = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+  const touch = (k) => setTouched((p) => ({ ...p, [k]: true }));
 
-  const submit = (e) => {
+  const fieldErrors = useMemo(() => {
+    const e = {};
+    const idErr = validateCollegeId(form.collegeId);
+    if (idErr) e.collegeId = idErr;
+    if (!form.academicYear) e.academicYear = 'Please select your academic year.';
+    const pwErr = validatePassword(form.password);
+    if (pwErr && form.password && pwErr !== 'Password is required.') e.password = pwErr;
+    return e;
+  }, [form]);
+
+  const submit = async (e) => {
     e.preventDefault();
-    if (!form.collegeId || !form.academicYear || !form.password) {
-      setError('Please fill in all fields to continue.');
+    setTouched({ collegeId: true, academicYear: true, password: true });
+    if (Object.keys(fieldErrors).length > 0 || !form.password) {
+      const summary = [];
+      if (!form.collegeId || fieldErrors.collegeId) summary.push('valid College ID');
+      if (!form.academicYear) summary.push('academic year');
+      if (!form.password) summary.push('password');
+      setError(
+        summary.length > 0
+          ? `Please provide a ${summary.join(', ')}.`
+          : 'Please fix the highlighted fields.',
+      );
       return;
     }
     setError('');
+    setSuccess('');
     setLoading(true);
-    setTimeout(() => {
-      const profile = {
-        name: 'Atul Munesh',
-        collegeId: form.collegeId,
-        academicYear: form.academicYear,
-        department: 'Computer Science & Engineering',
-        semester: '1st Semester',
-        email: 'atul@example.com',
-      };
-      localStorage.setItem('cv_auth', JSON.stringify(profile));
-      setLoading(false);
-      navigate('/dashboard', { replace: true });
-    }, 900);
+    const result = await auth.login(form.collegeId, form.password, form.academicYear);
+    setLoading(false);
+    if (!result.ok) {
+      setError(result.error || 'Sign in failed. Please try again.');
+      return;
+    }
+    navigate('/dashboard', { replace: true });
   };
+
+  const errorClass = (k) =>
+    touched[k] && fieldErrors[k]
+      ? 'border-rose-400 focus:ring-4 focus:ring-rose-400/15'
+      : 'border-navy-200 focus:border-navy-500 focus:ring-4 focus:ring-navy-400/15';
 
   return (
     <div className="min-h-screen relative overflow-hidden flex flex-col">
@@ -125,7 +160,7 @@ export default function Login() {
             </motion.div>
 
             <div className="relative flex items-center justify-between text-xs text-white/80">
-              <p>"Report. Track. Resolve."</p>
+              <p>&quot;Report. Track. Resolve.&quot;</p>
               <p className="flex items-center gap-1">
                 <FiShield className="w-3.5 h-3.5" /> 256-bit Secure
               </p>
@@ -154,7 +189,24 @@ export default function Login() {
               </p>
             </motion.div>
 
-            <form onSubmit={submit} className="space-y-5">
+            <AnimatePresence>
+              {success && (
+                <motion.div
+                  key="success"
+                  initial={{ opacity: 0, y: -8, height: 0 }}
+                  animate={{ opacity: 1, y: 0, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mb-5"
+                >
+                  <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold flex items-start gap-2.5">
+                    <FiCheckCircle className="w-4.5 h-4.5 mt-0.5 shrink-0 text-emerald-600" />
+                    <span>{success}</span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <form onSubmit={submit} className="space-y-5" noValidate>
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -170,14 +222,20 @@ export default function Login() {
                     type="text"
                     autoComplete="username"
                     value={form.collegeId}
-                    onChange={(e) => update('collegeId', e.target.value.trim())}
+                    onChange={(e) => update('collegeId', e.target.value.trim().toUpperCase())}
+                    onBlur={() => touch('collegeId')}
                     placeholder="CSE20260045"
-                    className="w-full px-4 py-3.5 pl-11 rounded-2xl border border-navy-200 focus:border-navy-500 focus:ring-4 focus:ring-navy-400/15 bg-white outline-none transition-all placeholder:text-navy-400 font-medium"
+                    className={`w-full px-4 py-3.5 pl-11 rounded-2xl border focus:border-navy-500 bg-white outline-none transition-all placeholder:text-navy-400 font-medium ${errorClass('collegeId')}`}
                   />
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-navy-400 font-bold text-xs">
                     ID:
                   </span>
                 </div>
+                {touched.collegeId && fieldErrors.collegeId && (
+                  <p className="text-xs font-semibold text-rose-600 flex items-center gap-1.5">
+                    <FiAlertCircle className="w-3.5 h-3.5" /> {fieldErrors.collegeId}
+                  </p>
+                )}
               </motion.div>
 
               <motion.div
@@ -194,7 +252,8 @@ export default function Login() {
                     id="ay"
                     value={form.academicYear}
                     onChange={(e) => update('academicYear', e.target.value)}
-                    className="w-full appearance-none px-4 py-3.5 pr-11 rounded-2xl border border-navy-200 focus:border-navy-500 focus:ring-4 focus:ring-navy-400/15 bg-white outline-none transition-all font-medium text-navy-800"
+                    onBlur={() => touch('academicYear')}
+                    className={`w-full appearance-none px-4 py-3.5 pr-11 rounded-2xl border bg-white outline-none transition-all font-medium text-navy-800 ${errorClass('academicYear')}`}
                   >
                     {academicYears.map((y) => (
                       <option key={y}>{y}</option>
@@ -202,6 +261,11 @@ export default function Login() {
                   </select>
                   <FiChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-navy-400 pointer-events-none" />
                 </div>
+                {touched.academicYear && fieldErrors.academicYear && (
+                  <p className="text-xs font-semibold text-rose-600 flex items-center gap-1.5">
+                    <FiAlertCircle className="w-3.5 h-3.5" /> {fieldErrors.academicYear}
+                  </p>
+                )}
               </motion.div>
 
               <motion.div
@@ -220,8 +284,9 @@ export default function Login() {
                     autoComplete="current-password"
                     value={form.password}
                     onChange={(e) => update('password', e.target.value)}
+                    onBlur={() => touch('password')}
                     placeholder="Enter your password"
-                    className="w-full px-4 py-3.5 pr-12 rounded-2xl border border-navy-200 focus:border-navy-500 focus:ring-4 focus:ring-navy-400/15 bg-white outline-none transition-all placeholder:text-navy-400 font-medium"
+                    className={`w-full px-4 py-3.5 pr-12 rounded-2xl border bg-white outline-none transition-all placeholder:text-navy-400 font-medium ${errorClass('password')}`}
                   />
                   <button
                     type="button"
@@ -232,6 +297,11 @@ export default function Login() {
                     {showPass ? <FiEyeOff className="w-4.5 h-4.5" /> : <FiEye className="w-4.5 h-4.5" />}
                   </button>
                 </div>
+                {touched.password && fieldErrors.password && (
+                  <p className="text-xs font-semibold text-rose-600 flex items-center gap-1.5">
+                    <FiAlertCircle className="w-3.5 h-3.5" /> {fieldErrors.password}
+                  </p>
+                )}
               </motion.div>
 
               <motion.div
@@ -254,15 +324,20 @@ export default function Login() {
                 </button>
               </motion.div>
 
-              {error && (
-                <motion.p
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-semibold"
-                >
-                  {error}
-                </motion.p>
-              )}
+              <AnimatePresence>
+                {error && (
+                  <motion.div
+                    key="error"
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-semibold flex items-start gap-2.5"
+                  >
+                    <FiAlertCircle className="w-4.5 h-4.5 mt-0.5 shrink-0" />
+                    <span>{error}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
@@ -281,16 +356,25 @@ export default function Login() {
               </motion.div>
 
               <p className="text-center text-sm text-navy-500">
-                Using your college credentials •{' '}
-                <span className="font-semibold text-navy-700">Demo Login: Password is anything</span>
+                Don&apos;t have an account?{' '}
+                <Link
+                  to="/register"
+                  className="font-bold text-navy-700 hover:text-navy-900 hover:underline"
+                >
+                  Register
+                </Link>
+              </p>
+
+              <p className="text-center text-xs text-navy-400">
+                Using your college credentials • Demo mode accepts any password
               </p>
             </form>
 
             <div className="mt-8 p-4 sm:p-5 rounded-2xl bg-gradient-soft border border-navy-100 grid sm:grid-cols-3 gap-3">
               {[
-                { label: 'College ID', _Icon: FiUser },
-                { label: 'Student Account', _Icon: FiCheckCircle },
-                { label: 'Secure Access', _Icon: FiShield },
+                { label: 'College ID' },
+                { label: 'Student Account' },
+                { label: 'Secure Access' },
               ].map(({ label }, i) => (
                 <motion.div
                   key={label}

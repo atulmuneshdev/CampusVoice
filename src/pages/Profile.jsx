@@ -21,14 +21,15 @@ import {
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
+import { useAuth } from '../context/AuthContext';
 
 const defaultProfile = {
-  name: 'Atul Munesh',
-  collegeId: 'CSE20260045',
+  name: '',
+  collegeId: '',
   department: 'Computer Science & Engineering',
   academicYear: '2026-2030',
   semester: '1st Semester',
-  email: 'atul@example.com',
+  email: '',
   phone: '+91 98765 43210',
   dob: '15 April 2008',
   gender: 'Male',
@@ -44,13 +45,19 @@ const quickStats = [
 
 export default function Profile() {
   const navigate = useNavigate();
+  const authCtx = useAuth();
   const [profile, setProfile] = useState(() => {
+    const fromAuth = authCtx.user || {};
+    let fromStorage = {};
     try {
-      const auth = JSON.parse(localStorage.getItem('cv_auth') || '{}');
-      return { ...defaultProfile, ...auth };
+      fromStorage = JSON.parse(localStorage.getItem('cv_auth') || '{}');
     } catch {
-      return defaultProfile;
+      fromStorage = {};
     }
+    const merged = { ...defaultProfile, ...fromStorage, ...fromAuth };
+    if (!merged.name) merged.name = 'Student';
+    if (!merged.collegeId) merged.collegeId = '—';
+    return merged;
   });
   const [notifs, setNotifs] = useState({
     email: true,
@@ -66,23 +73,22 @@ export default function Profile() {
 
   const saveEdit = () => {
     setProfile(editForm);
-    localStorage.setItem(
-      'cv_auth',
-      JSON.stringify({
-        name: editForm.name,
-        collegeId: editForm.collegeId,
-        academicYear: editForm.academicYear,
-        department: editForm.department,
-        semester: editForm.semester,
-        email: editForm.email,
-      }),
-    );
+    const shared = {
+      name: editForm.name,
+      collegeId: editForm.collegeId,
+      academicYear: editForm.academicYear,
+      department: editForm.department,
+      semester: editForm.semester,
+      email: editForm.email,
+    };
+    localStorage.setItem('cv_auth', JSON.stringify(shared));
+    authCtx.updateProfile(shared);
     setEditOpen(false);
   };
 
   const logout = () => {
-    localStorage.removeItem('cv_auth');
-    navigate('/login', { replace: true });
+    authCtx.logout();
+    navigate('/login?loggedout=1', { replace: true });
   };
 
   const initials = profile.name

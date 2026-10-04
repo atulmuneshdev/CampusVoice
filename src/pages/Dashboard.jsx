@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
@@ -16,8 +16,9 @@ import {
 import StatCard from '../components/StatCard';
 import ComplaintCard from '../components/ComplaintCard';
 import Button from '../components/Button';
-import { complaints } from '../data/complaints';
+import { complaints as defaultComplaints } from '../data/complaints';
 import { notices } from '../data/notices';
+import { useAuth, filterComplaintsByUser } from '../context/AuthContext';
 
 function getGreeting() {
     const h = new Date().getHours();
@@ -30,18 +31,35 @@ function getGreeting() {
 export default function Dashboard() {
     const [greeting, emoji] = getGreeting();
     const [loading, setLoading] = useState(true);
+    const auth = useAuth();
+    const user = auth.user;
+    const firstName = (user?.name || '').split(' ')[0] || 'Student';
 
     useEffect(() => {
         const t = setTimeout(() => setLoading(false), 500);
         return () => clearTimeout(t);
     }, []);
 
-    const total = complaints.length;
-    const pending = complaints.filter((c) => c.status === 'Pending').length;
-    const review = complaints.filter((c) => c.status === 'Under Review' || c.status === 'Escalated').length;
-    const resolved = complaints.filter((c) => c.status === 'Resolved').length;
+    const mine = useMemo(() => {
+        let merged = [];
+        try {
+            const userCreated = JSON.parse(localStorage.getItem('cv_complaints') || '[]');
+            const globals = (window.__CV_COMPLAINTS__ || defaultComplaints).filter(
+                (c) => !userCreated.some((u) => u.id === c.id),
+            );
+            merged = [...userCreated, ...globals];
+        } catch {
+            merged = (window.__CV_COMPLAINTS__ || defaultComplaints).slice();
+        }
+        return filterComplaintsByUser(merged, user);
+    }, [user]);
 
-    const recent = complaints.slice(0, 4);
+    const total = mine.length;
+    const pending = mine.filter((c) => c.status === 'Pending').length;
+    const review = mine.filter((c) => c.status === 'Under Review' || c.status === 'Escalated').length;
+    const resolved = mine.filter((c) => c.status === 'Resolved').length;
+
+    const recent = mine.slice(0, 4);
     const latestUpdates = [
         {
             Icon: FiFileText,
@@ -85,7 +103,7 @@ export default function Dashboard() {
         },
     ];
 
-    const rate = Math.round((resolved / total) * 100);
+    const rate = total === 0 ? 0 : Math.round((resolved / Math.max(total, 1)) * 100);
 
     if (loading) {
         return (
@@ -127,7 +145,7 @@ export default function Dashboard() {
                             })}
                         </p>
                         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight mb-2">
-                            {greeting}, Atul {emoji}
+                            {greeting}, {firstName} {emoji}
                         </h1>
                         <p className="text-white/85 max-w-xl">
                             Here's what's happening with your complaints today. You have{' '}

@@ -15,7 +15,7 @@ import {
   FiDownload,
   FiMoreHorizontal,
   FiFile,
-  FiMail,
+  FiImage,
 } from 'react-icons/fi';
 import Button from '../components/Button';
 import ComplaintStatus, { ComplaintPriority, statusConfig } from '../components/ComplaintStatus';
@@ -206,6 +206,23 @@ export default function ComplaintDetails() {
                   </p>
                   <p className="text-sm font-bold text-navy-800 truncate">
                     {complaint.updatedAt ?? complaint.date}
+                  </p>
+                </div>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-white/60 border border-navy-100 flex items-center gap-3">
+                <span className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                  <FiUser className="w-4.5 h-4.5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-navy-400">
+                    Submitted by
+                  </p>
+                  <p className="text-sm font-bold text-navy-800 truncate">
+                    {complaint.studentName || complaint.timeline?.[0]?.by || 'Anonymous Student'}
+                  </p>
+                  <p className="text-[11px] font-semibold text-navy-500 truncate">
+                    {complaint.studentCollegeId || complaint.studentName ? '' : 'Demo / legacy entry'}
+                    {complaint.studentCollegeId ? `ID: ${complaint.studentCollegeId}` : ''}
                   </p>
                 </div>
               </div>

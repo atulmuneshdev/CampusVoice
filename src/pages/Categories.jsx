@@ -11,11 +11,11 @@ export default function Categories() {
   const [query, setQuery] = useState('');
   const list = query
     ? categories.filter(
-      (c) =>
-        c.name.toLowerCase().includes(query.toLowerCase()) ||
-        c.description.toLowerCase().includes(query.toLowerCase()) ||
-        c.examples.some((e) => e.toLowerCase().includes(query.toLowerCase())),
-    )
+        (c) =>
+          c.name.toLowerCase().includes(query.toLowerCase()) ||
+          c.description.toLowerCase().includes(query.toLowerCase()) ||
+          c.examples.some((e) => e.toLowerCase().includes(query.toLowerCase())),
+      )
     : categories;
 
   const totalCount = categories.reduce((a, c) => a + c.count, 0);
